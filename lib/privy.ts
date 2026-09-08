@@ -1,0 +1,1 @@
+export const shortAddress = (value?: string | null) => value ? `${value.slice(0, 6)}…${value.slice(-4)}` : "Preview account";
