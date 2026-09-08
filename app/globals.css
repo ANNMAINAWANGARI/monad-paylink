@@ -128,3 +128,10 @@
     @apply font-sans;
   }
 }
+@layer components {
+  .pl-button { display: inline-flex; align-items: center; justify-content: center; gap: .55rem; border-radius: 999px; padding: .78rem 1.1rem; font-size: .84rem; font-weight: 800; transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease; }
+
+  .pl-button-ghost { color: #21443a; background: rgba(232, 241, 231, .72); }
+  .pl-button-ink { color: #fffdf9; background: #172321; }
+  .pl-button-ink:hover { background: #21443a; }
+}
