@@ -49,5 +49,9 @@ export default function Home() {
     router.replace(user ? '/dashboard' : '/login');
   }, [initStatus, user, router]);
 
-  return null; // change to a loading spinner while initStatus resolves
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-[#2E2557]" />
+    </div>
+  )
 }
