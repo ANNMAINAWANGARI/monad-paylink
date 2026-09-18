@@ -1,15 +1,15 @@
 
 import { defineChain } from "viem";
 
-export const monadTestnet = defineChain({
-  id: 10143,
-  name: "Monad Testnet",
-  nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+export const sepoliaTestnet = defineChain({
+  id: 11155111,
+  name: "Sepolia",
+  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
   rpcUrls: {
-    default: { http: ["https://testnet-rpc.monad.xyz"] }, 
+    default: { http: ["https://ethereum-sepolia-rpc.publicnode.com"] }, 
   },
   blockExplorers: {
-    default: { name: "MonadScan", url: "https://testnet.monadscan.com" },
+    default: { name: "Etherscan-Sepolia", url: "https://sepolia.etherscan.io/" },
   },
 });
 

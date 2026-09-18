@@ -1,10 +1,13 @@
 'use client'
-import { useEffect,useState } from 'react'
+import { useEffect,useState } from 'react';
+import { useGetActiveNetworkData, useGetNativeBalance, useGetTokenBalances, useRemoveWalletAccount, useSwitchActiveNetwork } from '@dynamic-labs-sdk/react-hooks';
 import { useGetWalletAccounts, useUser } from "@dynamic-labs-sdk/react-hooks";
 import { Button } from '@/components/ui/button';
 import GiftCard from '@/components/GiftCard';
 import AddMoney from '@/components/AddMoney';
-import { X } from "lucide-react";
+import { X, Settings } from "lucide-react";
+
+import { NetworkSwitcher } from '@/components/NetworkSwitcher';
 
 interface VideoFeedItem {
   id: string;
@@ -22,6 +25,7 @@ interface OpenSheet {
 
 const sheetTitle = { money: "Add money", gift: "Send a gift" };
 
+
 const giftOptions = [
   { icon: "🌹", name: "Rose", coins: 1 },
   { icon: "🍦", name: "Ice cream", coins: 1 },
@@ -34,11 +38,12 @@ const giftOptions = [
 ];
 
 const coinOptions = [
-  { coins: 100, price: "KES 190" },
-  { coins: 500, price: "KES 950" },
-  { coins: 1000, price: "KES 1,900" },
-  { coins: 2000, price: "KES 3,800" },
+  { coins: 100, price: "KES 100" },
+  { coins: 500, price: "KES 500" },
+  { coins: 1000, price: "KES 1,000" },
+  { coins: 2000, price: "KES 2,000" },
 ];
+
 
 const DashboardPage = () => {
   const { data: walletAccounts = [] } = useGetWalletAccounts();
@@ -47,70 +52,67 @@ const DashboardPage = () => {
   const [openSheet, setOpenSheet] = useState<OpenSheet | null>(null);
   const [selectedCoins, setSelectedCoins] = useState(500);
   const [selectedGift, setSelectedGift] = useState("Finger heart");
-  const [feeds, setFeeds] = useState<VideoFeedItem[]>([
-    {
-      id: '1',
-      creatorAddress: '0x123...4567',
-      title: "Jamie & Biscuit",
-      location: "Austin, TX · Biscuit's birthday stream",
-      views: "1,204",
-      coins: 250,
-    },
-    {
-      id: '2',
-      creatorAddress: '0x123...4567',
-      title: "Jamie & Biscuit",
-      location: "Austin, TX · Biscuit's birthday stream",
-      views: "1,204",
-      coins: 250,
-    },
-    {
-      id: '3',
-      creatorAddress: '0x123...4567',
-      title: "Jamie & Biscuit",
-      location: "Austin, TX · Biscuit's birthday stream",
-      views: "1,204",
-      coins: 250,
-    },
-    {
-      id: '4',
-      creatorAddress: '0x123...4567',
-      title: "Jamie & Biscuit",
-      location: "Austin, TX · Biscuit's birthday stream",
-      views: "1,204",
-      coins: 250,
-    },
-    {
-      id: '5',
-      creatorAddress: '0x123...4567',
-      title: "Jamie & Biscuit",
-      location: "Austin, TX · Biscuit's birthday stream",
-      views: "1,204",
-      coins: 250,
-    }
-  ]);
+  const [feeds, setFeeds] = useState<VideoFeedItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+  const { data: tokens } = useGetTokenBalances({
+    walletAccount,
+    includePrices: true,
+    filterSpamTokens: true,
+  });
+ const total = tokens?.reduce((sum, t) => sum + Number(t.balance), 0);
+  
+
+ 
 
   useEffect(() => {
-    console.log("Wallet Accounts in Chrome:", walletAccounts);
-    console.log("User in Chrome:", user);
-  }, [walletAccounts]);
+    fetch("/api/feeds")
+    .then((res) => res.json())
+    .then((data) => setFeeds(data))
+    .catch((err) => console.error("Failed to load feeds:", err))
+    .finally(() => setHydrated(true));
+  }, []);
 
-  const handleCreateFeed = () => {
+  
+  const handleCreateFeed = async() => {
     if (!walletAccount) {
       alert("Please connect your wallet first!");
       return;
     }
 
+    const address = walletAccount.address;
+
+    const alreadyLive = feeds.some(
+      (feed) => feed.creatorAddress.toLowerCase() === address.toLowerCase()
+    );
+
+    if (alreadyLive) {
+      alert("This wallet already has an active live feed!");
+      return;
+    }
+
     const newFeed: VideoFeedItem = {
-      id: Date.now().toString(),
-      creatorAddress: walletAccount?.address,
+      id: user?.id as string,
+      creatorAddress: address,
       title: `Stream by ${user?.email}`,
       location: "Live Location · New Stream",
       views: "1",
       coins: 0,
     };
 
-    setFeeds((prev) => [newFeed, ...prev]);
+    const res = await fetch("/api/feeds", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(newFeed),
+    });
+
+    if (res.status === 409) {
+    alert("This wallet already has an active live feed!");
+    return;
+    }
+
+    const updated = await res.json();
+    setFeeds(updated);
+
   };
   
 
@@ -119,14 +121,18 @@ const DashboardPage = () => {
        <main className="mx-auto max-w-md space-y-6">
         <div className="flex items-center justify-between ">
           <h1 className="text-2xl font-bold text-white">Live Feeds</h1>
-          <button
-            onClick={handleCreateFeed}
+          <div className='flex items-center gap-2 cursor-pointer'>
+            <button
+             onClick={handleCreateFeed}
             className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-white/90 cursor-pointer"
-          >
+            >
             Create Feed
-          </button>
+            </button>
+            <Settings className='text-amber-400'/>
+          </div>
         </div>
-        {feeds.map((item)=>(
+        {!hydrated ? ( <p className="text-center text-slate-400">Loading feeds...</p>):(
+        feeds.map((item)=>(
           <div
           key={item.id}
           className="relative w-full max-w-md aspect-7/11  rounded-3xl  bg-linear-to-b from-purple-900/40 via-slate-900/80 to-slate-950 border border-slate-800 flex flex-col justify-between p-4 shadow-2xl">
@@ -141,11 +147,14 @@ const DashboardPage = () => {
                   {item.views} watching
                 </span>
               </div>
+              <div className='flex items-center gap-2'>
+                {/* <NetworkSwitcher walletAccount={walletAccount}/> */}
               <Button
                className="bg-slate-500/80 text-xs font-bold px-3 py-1 rounded-full border border-slate-700 flex items-center gap-1"
                onClick={() => setOpenSheet({ id: item.id, sheet: "money" })}>
-                {item.coins} coins <span className="text-amber-400">⊕</span>
+                {total && total}  coins <span className="text-amber-400">⊕</span>
               </Button>
+              </div>
             </div>
             {/* Bottom Details (Creator & Caption) */}
             <div className="z-10 space-y-3">
@@ -168,9 +177,9 @@ const DashboardPage = () => {
                   placeholder="Say something..."
                   className="flex-1 bg-slate-900/60 border border-slate-700/60 rounded-full px-4 py-2 text-xs text-white focus:outline-none focus:border-slate-500"
                 />
-                <button className="bg-amber-400 text-black px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1" onClick={() => setOpenSheet({ id: item.id, sheet: "gift" })}>
+                {item.creatorAddress !== walletAccount.address && <button className="bg-amber-400 text-black px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1 cursor-pointer" onClick={() => setOpenSheet({ id: item.id, sheet: "gift" })}>
                   🎁 Gift
-                </button>
+                </button>}
               </div>
               {openSheet?.id === item.id && (
                 <div className="absolute inset-0 z-20 flex flex-col justify-end rounded-3xl bg-foreground/35 p-3" onClick={() => setOpenSheet(null)}>
@@ -181,14 +190,14 @@ const DashboardPage = () => {
                         <X className="size-5" />
                     </Button>
                     </div>
-                    {openSheet.sheet === "money" ? (<><AddMoney coinOptions={coinOptions} selectedCoins={selectedCoins} setSelectedCoins={setSelectedCoins}/></>):(<><GiftCard giftOptions={giftOptions} selectedGift={selectedGift} setSelectedGift={setSelectedGift}/></>)}
+                    {openSheet.sheet === "money" ? (<><AddMoney coinOptions={coinOptions} selectedCoins={selectedCoins} setSelectedCoins={setSelectedCoins} walletAddress={walletAccount.address}/></>):(<><GiftCard giftOptions={giftOptions} selectedGift={selectedGift} setSelectedGift={setSelectedGift}/></>)}
                   </section>
                 </div>
               )}
             </div>
             
           </div>
-        ))}
+        )))}
        </main>
     </div>
   )
