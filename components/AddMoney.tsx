@@ -57,7 +57,7 @@ const AddMoney = ({coinOptions, selectedCoins, setSelectedCoins,walletAddress}:A
         <Check className="size-8 text-teal" />
         <p className="text-lg font-semibold">{selectedCoins} coins added</p>
         <a
-          href={`https://sepolia.etherscan.io/tx/${txHash}`}
+          href={`https://testnet.monadscan.com/tx/${txHash}`}
           target="_blank"
           rel="noreferrer"
           className="text-xs text-teal underline underline-offset-2"

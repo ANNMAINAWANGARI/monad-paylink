@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseUnits ,erc20Abi} from "viem";
 import { treasuryClient } from "@/lib/treasury";
-import { AUSD_ADDRESS } from "@/lib/sepolia";
+import { AUSD_ADDRESS } from "@/lib/monad-tokens";
 
 const AUSD_PER_COIN = 1;
 

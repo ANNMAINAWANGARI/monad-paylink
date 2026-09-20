@@ -1,23 +1,23 @@
 
 "use client";
 
-import { useUser, useInitStatus } from "@dynamic-labs-sdk/react-hooks";
+import { usePrivy } from "@privy-io/react-auth";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
+
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { data: initStatus } = useInitStatus();
-  const { data: user } = useUser();
+  const { ready, authenticated, user } = usePrivy();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (initStatus === "finished" && !user && pathname !== "/login") {
+    if (!authenticated && !user && pathname !== "/login") {
       router.replace("/login");
     }
-  }, [initStatus, user, pathname, router]);
+  }, [authenticated, user, pathname, router]);
 
-  if (initStatus !== "finished" || (!user && pathname !== "/login")) {
+  if (!ready || (!user && pathname !== "/login")) {
     return null; // or a spinner
   }
 

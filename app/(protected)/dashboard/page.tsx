@@ -1,13 +1,18 @@
 'use client'
 import { useEffect,useState } from 'react';
-import { useGetActiveNetworkData, useGetNativeBalance, useGetTokenBalances, useRemoveWalletAccount, useSwitchActiveNetwork } from '@dynamic-labs-sdk/react-hooks';
-import { useGetWalletAccounts, useUser } from "@dynamic-labs-sdk/react-hooks";
 import { Button } from '@/components/ui/button';
 import GiftCard from '@/components/GiftCard';
 import AddMoney from '@/components/AddMoney';
-import { X, Settings } from "lucide-react";
+import { X, Settings,LoaderCircle } from "lucide-react";
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { Address, createPublicClient, formatUnits, Hex, http } from 'viem';
+import { monadTestnet } from 'viem/chains';
+// import { NetworkSwitcher } from '@/components/NetworkSwitcher';
 
-import { NetworkSwitcher } from '@/components/NetworkSwitcher';
+const publicClient = createPublicClient({
+  chain: monadTestnet,
+  transport: http(),
+});
 
 interface VideoFeedItem {
   id: string;
@@ -45,24 +50,22 @@ const coinOptions = [
 ];
 
 
+const AUSD_ADDRESS: Address = "0xa9012a055bd4e0eDfF8Ce09f960291C09D5322dC";
+
+
 const DashboardPage = () => {
-  const { data: walletAccounts = [] } = useGetWalletAccounts();
-  const { data: user } = useUser();
-  const walletAccount = walletAccounts[0];
+  const { user } = usePrivy();
+  const {wallets} = useWallets();
   const [openSheet, setOpenSheet] = useState<OpenSheet | null>(null);
   const [selectedCoins, setSelectedCoins] = useState(500);
   const [selectedGift, setSelectedGift] = useState("Finger heart");
   const [feeds, setFeeds] = useState<VideoFeedItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const { data: tokens } = useGetTokenBalances({
-    walletAccount,
-    includePrices: true,
-    filterSpamTokens: true,
-  });
- const total = tokens?.reduce((sum, t) => sum + Number(t.balance), 0);
+  const [balance, setBalance] = useState<string>('0');
+  const [loading, setLoading] = useState<boolean>(true);
+  const embeddedWallet = wallets.find(w => w.walletClientType === 'privy');
+  const linkedWallets = user?.linkedAccounts.filter((account) => account.type === 'wallet' || account.type === 'smart_wallet');
   
-
- 
 
   useEffect(() => {
     fetch("/api/feeds")
@@ -72,14 +75,62 @@ const DashboardPage = () => {
     .finally(() => setHydrated(true));
   }, []);
 
+  const fetchAusdBalance = async (address: Hex) => {
+    try {
+      
+      const [rawBalance, decimals] = await Promise.all([
+        publicClient.readContract({
+          address: AUSD_ADDRESS,
+          abi: [
+            {
+              name: 'balanceOf',
+              type: 'function',
+              stateMutability: 'view',
+              inputs: [{ name: 'account', type: 'address' }],
+              outputs: [{ name: '', type: 'uint256' }],
+            },
+          ],
+          functionName: 'balanceOf',
+          args: [address],
+        }),
+        publicClient.readContract({
+          address: AUSD_ADDRESS,
+          abi: [
+            {
+              name: 'decimals',
+              type: 'function',
+              stateMutability: 'view',
+              inputs: [],
+              outputs: [{ name: '', type: 'uint8' }],
+            },
+          ],
+          functionName: 'decimals',
+        }),
+      ]);
+
+      const formatted = formatUnits(rawBalance as bigint, decimals as number);
+      setBalance(formatted);
+    } catch (error) {
+      console.error('Error fetching AUSD balance:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (embeddedWallet) {
+      fetchAusdBalance(embeddedWallet.address as `0x${string}`);
+    }
+  }, [embeddedWallet]);
+
   
   const handleCreateFeed = async() => {
-    if (!walletAccount) {
+    if (!embeddedWallet) {
       alert("Please connect your wallet first!");
       return;
     }
 
-    const address = walletAccount.address;
+    const address = embeddedWallet.address;
 
     const alreadyLive = feeds.some(
       (feed) => feed.creatorAddress.toLowerCase() === address.toLowerCase()
@@ -93,10 +144,10 @@ const DashboardPage = () => {
     const newFeed: VideoFeedItem = {
       id: user?.id as string,
       creatorAddress: address,
-      title: `Stream by ${user?.email}`,
+      title: `Stream by ${user?.email?.address}`,
       location: "Live Location · New Stream",
       views: "1",
-      coins: 0,
+      coins: Number(balance),
     };
 
     const res = await fetch("/api/feeds", {
@@ -115,7 +166,6 @@ const DashboardPage = () => {
 
   };
   
-
   return (
     <div className="min-h-screen  px-4 py-6 bg-black">
        <main className="mx-auto max-w-md space-y-6">
@@ -152,7 +202,7 @@ const DashboardPage = () => {
               <Button
                className="bg-slate-500/80 text-xs font-bold px-3 py-1 rounded-full border border-slate-700 flex items-center gap-1"
                onClick={() => setOpenSheet({ id: item.id, sheet: "money" })}>
-                {total && total}  coins <span className="text-amber-400">⊕</span>
+                {loading ? <LoaderCircle/> : `${balance}`}  coins <span className="text-amber-400">⊕</span>
               </Button>
               </div>
             </div>
@@ -166,7 +216,7 @@ const DashboardPage = () => {
                   <h3 className="font-semibold text-sm leading-tight text-slate-300">{item.title}</h3>
                   <p className="text-xs text-slate-400">{item.location}</p>
                   <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                    Creator: {item.creatorAddress.slice(0, 6)}...{item.creatorAddress.slice(-4)}
+                    Creator: {item?.creatorAddress.slice(0, 6)}...{item?.creatorAddress.slice(-4)}
                   </p>
                 </div>
               </div>
@@ -177,7 +227,7 @@ const DashboardPage = () => {
                   placeholder="Say something..."
                   className="flex-1 bg-slate-900/60 border border-slate-700/60 rounded-full px-4 py-2 text-xs text-white focus:outline-none focus:border-slate-500"
                 />
-                {item.creatorAddress !== walletAccount.address && <button className="bg-amber-400 text-black px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1 cursor-pointer" onClick={() => setOpenSheet({ id: item.id, sheet: "gift" })}>
+                {item.creatorAddress !== embeddedWallet?.address && <button className="bg-amber-400 text-black px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1 cursor-pointer" onClick={() => setOpenSheet({ id: item.id, sheet: "gift" })}>
                   🎁 Gift
                 </button>}
               </div>
@@ -190,7 +240,7 @@ const DashboardPage = () => {
                         <X className="size-5" />
                     </Button>
                     </div>
-                    {openSheet.sheet === "money" ? (<><AddMoney coinOptions={coinOptions} selectedCoins={selectedCoins} setSelectedCoins={setSelectedCoins} walletAddress={walletAccount.address}/></>):(<><GiftCard giftOptions={giftOptions} selectedGift={selectedGift} setSelectedGift={setSelectedGift}/></>)}
+                    {openSheet.sheet === "money" ? (<><AddMoney coinOptions={coinOptions} selectedCoins={selectedCoins} setSelectedCoins={setSelectedCoins} walletAddress={embeddedWallet?.address as string}/></>):(<><GiftCard giftOptions={giftOptions} selectedGift={selectedGift} setSelectedGift={setSelectedGift} walletAccount={embeddedWallet} recipient={item.creatorAddress} tokenBalance={balance}/></>)}
                   </section>
                 </div>
               )}

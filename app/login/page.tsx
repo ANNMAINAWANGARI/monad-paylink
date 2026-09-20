@@ -1,46 +1,34 @@
 
 "use client";
 
-import { FormEvent, useState } from "react";
-import {useSignInWithSocialRedirect} from "@dynamic-labs-sdk/react-hooks";
-import { EmailSignIn } from "@/components/EmailSignIn";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { usePrivy } from "@privy-io/react-auth";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null);
-
+  const { ready, authenticated, user, login, logout } = usePrivy();
   
-  const { mutate: signInWithSocialRedirect } = useSignInWithSocialRedirect();
+  useEffect(() => {
+    if (authenticated) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
+
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <div className=" border rounded-lg p-8 shadow-md bg-[#2E2557] flex flex-col gap-4">
-        <h1 className="text-center text-4xl text-white">Sign in</h1>
-        <p className="text-center text-gray-400 max-w-xs mx-auto">
-          Sign in to send or receive gifts. No seed phrase, no wallet setup — a wallet is created for you automatically.
-        </p>
-
-      <Button
-        className=" bg-white text-black hover:bg-white hover:text-black py-5 border border-gray-200"
-        onClick={() =>
-          signInWithSocialRedirect({ provider: "google", redirectUrl: window.location.origin + "/login" })
-        }
-
-      >
-        Continue with Google
-      </Button>
-
-      <div className="text-white text-center">
-        or
-      </div>
-
-      <EmailSignIn/>
-
-      {error && <p className="text-center text-red-600 pt-4">
-        {error}
-      </p>}
-      </div>
-    </div>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
+      <h1 className="text-3xl font-bold">Privy Embedded Wallet</h1>
+      <p className="text-gray-600 text-center max-w-md">
+        Log in with Email OTP or Google. An embedded wallet is created automatically in the background.
+      </p>
+      <button
+        onClick={login}
+        className="rounded-lg bg-indigo-600 px-8 py-3 text-white font-medium hover:bg-indigo-700 transition"
+        >
+          Log in with Email or Google
+      </button>
+    </main>
   );
 }
