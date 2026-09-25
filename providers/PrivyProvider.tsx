@@ -11,7 +11,7 @@ export const PrivyProviders =({ children }: { children: React.ReactNode })=>{
             config={{
                 loginMethods: ["email", "google"],
                 appearance: {
-                    theme: "dark",
+                    theme: "light",
                     accentColor: "#676FFF", 
                 },
                 embeddedWallets:{
