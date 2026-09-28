@@ -60,6 +60,12 @@ export interface VideoWidgetTokenPackage {
   priceKes: number;
 }
 
+export interface VideoWidgetGoal {
+  title: string;
+  target: number;
+  current: number;
+}
+
 const DEFAULT_TOKEN_PACKAGES: VideoWidgetTokenPackage[] = [
   { id: 'pkg-500', tokens: 500, priceKes: 500 },
   { id: 'pkg-400', tokens: 400, priceKes: 400 },
@@ -98,6 +104,9 @@ export interface VideoWidgetProps {
    */
   live?: boolean;
   incomingGift?: { uid: string; gift: VideoWidgetGift } | null;
+  goal?: VideoWidgetGoal | null;
+  onSetGoal?: (title: string, target: number) => void;
+  setupstream?:()=>void;
 
   /** Set false to hide the token balance pill entirely. */
   showTokens?: boolean;
@@ -355,6 +364,8 @@ export default function VideoWidget({
   onBuyTokens,
   isCreator = false,
   onGiftsChange,
+  goal,
+  onSetGoal,
   incomingGift,
   isAuthenticated = true,
   onRequireAuth,
@@ -391,6 +402,8 @@ export default function VideoWidget({
   const [isLiveStream, setIsLiveStream] = useState(false);
   const [seekableStart, setSeekableStart] = useState(0);
   const [seekableEnd, setSeekableEnd] = useState(0);
+  const [goalTitle, setGoalTitle] = useState('');
+  const [goalTarget, setGoalTarget] = useState('');
 
   const isLive = live ?? isLiveStream;
   const dvrWindow = seekableEnd - seekableStart;
@@ -429,8 +442,6 @@ export default function VideoWidget({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
-  const [newIcon, setNewIcon] = useState('');
-  const [newLabel, setNewLabel] = useState('');
   const [amount, setAmount] = useState('');
 
   const balance = tokenBalance ?? internalBalance;
@@ -675,7 +686,28 @@ export default function VideoWidget({
   // }, 2600);
   // return () => clearTimeout(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [incomingGift?.uid]);
+  }, [incomingGift?.uid]);
+
+const wasReached = useRef(false);
+useEffect(() => {
+  if (!goal) {
+    wasReached.current = false;
+    return;
+  }
+  const reached = goal.current >= goal.target;
+  if (reached && !wasReached.current) {
+    const burst = Array.from({ length: 8 }, (_, i) => ({
+      uid: `goal-${Date.now()}-${i}`,
+      gift: { id: 'goal', icon: '🎉', label: '', price: 0 },
+      left: 10 + Math.random() * 80,
+    }));
+    setFloatingGifts((f) => [...f, ...burst]);
+    setTimeout(() => {
+      setFloatingGifts((f) => f.filter((x) => !burst.some((b) => b.uid === x.uid)));
+    }, 2600);
+  }
+  wasReached.current = reached;
+}, [goal?.current, goal?.target]);
 
   const sendGift = (gift: VideoWidgetGift) => {
     if (!isAuthenticated) {
@@ -814,7 +846,7 @@ export default function VideoWidget({
         }
       `}</style>
 
-      {/* floating gifts — render above the fading controls layer, always visible */}
+      {/* floating gifts — rendered above the fading controls layer, always visible */}
       <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
         {floatingGifts.map((fg) => (
           <div
@@ -833,6 +865,40 @@ export default function VideoWidget({
           </div>
         ))}
       </div>
+
+      {/**goal bar - shows the target contribution*/}
+      {goal && (() => {
+        const pct = Math.min(100, (goal.current / goal.target) * 100);
+        const reached = goal.current >= goal.target;
+        return (
+          <div style={{ position: 'absolute', top: 52, left: 16, width: 'min(280px, 60%)', pointerEvents: 'none' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: 11.5,
+                marginBottom: 4,
+                textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+              }}
+            >
+              <span>{reached ? '🎉 ' : ''}{goal.title}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {goal.current} / {goal.target}
+              </span>
+            </div>
+            <div style={{ height: 6, borderRadius: 3, background: 'rgba(242,240,235,0.2)', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${pct}%`,
+                  height: '100%',
+                  background: reached ? '#3DD68C' : accent,
+                  transition: 'width 500ms ease',
+                }}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* controls layer — this is what auto-hides */}
       <div
@@ -1403,6 +1469,31 @@ export default function VideoWidget({
       {isCreator && settingsOpen && (
         <Modal title="Manage your gifts" onClose={closeSettings}>
           <div className='flex flex-col rounded-2xl border border-white/10 bg-white/3 p-2 space-y-6 backdrop-blur w-full'>
+            <section className='space-y-3 flex flex-col'>
+              <h1 className='mb-3'>Stream Goal</h1>
+              
+              <div>
+                <input
+                value={goalTitle}
+                onChange={(e) => setGoalTitle(e.target.value)}
+                placeholder="New creator goal"
+                aria-label="Goal title"/>
+                <input
+                value={goalTarget}
+                onChange={(e) => setGoalTarget(e.target.value)}
+                placeholder="500"
+                inputMode="numeric"
+                aria-label="Goal target"/>
+                <button
+                onClick={() => {
+                  const t = Number(goalTarget);
+                  if (!goalTitle.trim() || !Number.isFinite(t) || t <= 0) return;
+                  onSetGoal?.(goalTitle.trim(), t);
+                  setGoalTitle('');
+                  setGoalTarget('');
+                }}>Set</button>
+              </div>
+            </section>
             <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Cash Out</h3>

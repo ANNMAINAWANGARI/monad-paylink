@@ -17,7 +17,7 @@ export default function Home() {
               <Zap/>
             </div>
           </div>
-          <span className="font-display font-bold text-xl tracking-tight text-[#ffffff]">PesaLink</span>
+          <span className="font-display font-bold text-xl tracking-tight text-[#ffffff]">StreamBurst</span>
         </Link>
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8352ec] text-[#ffffff] font-semibold text-sm transition-all shadow-md shadow-[#8352ec]/20">
           <Wallet/>
@@ -34,7 +34,7 @@ export default function Home() {
           <span className="bg-linear-to-r from-[#8352ec] via-[#c084fc] to-[#10b981] bg-clip-text text-transparent">On-Chain & Instant.</span>
         </h1>
         <p className="text-base sm:text-lg text-[#94a3b8] max-w-xl mx-auto leading-relaxed">
-          Welcome to PesaLink. Send crypto micro-gifts, mint live NFT badges, and rock exclusive PFP stickers with zero middlemen and sub-second finality.
+          Got a community? Unleash Viral Engagement. Change how value is distributed. Keep 100% of your earnings.
         </p>
       </main>
     </div>
