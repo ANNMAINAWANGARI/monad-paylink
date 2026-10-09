@@ -106,7 +106,7 @@ export interface VideoWidgetProps {
   incomingGift?: { uid: string; gift: VideoWidgetGift } | null;
   goal?: VideoWidgetGoal | null;
   onSetGoal?: (title: string, target: number) => void;
-  setupstream?:()=>void;
+  feed?: VideoWidgetFeedItem[];
 
   /** Set false to hide the token balance pill entirely. */
   showTokens?: boolean;
@@ -176,6 +176,13 @@ export interface VideoWidgetProps {
   errorContent?: React.ReactNode;
 
   className?: string;
+}
+
+export interface VideoWidgetFeedItem {
+  uid: string;
+  name: string;
+  gift: VideoWidgetGift;
+  amount: number;
 }
 
 function formatTime(totalSeconds: number): string {
@@ -365,6 +372,7 @@ export default function VideoWidget({
   isCreator = false,
   onGiftsChange,
   goal,
+  feed = [],
   onSetGoal,
   incomingGift,
   isAuthenticated = true,
@@ -844,6 +852,9 @@ useEffect(() => {
         @keyframes vwSpin {
           to { transform: rotate(360deg); }
         }
+        @keyframes vwFeedIn {
+          from { opacity: 0; transform: translateY(8px); }
+        }
       `}</style>
 
       {/* floating gifts — rendered above the fading controls layer, always visible */}
@@ -899,6 +910,58 @@ useEffect(() => {
           </div>
         );
       })()}
+
+      {/**Live transaction feeds to showcase parallel transactions on monad */}
+      {feed.length > 0 && (
+  <div
+    style={{
+      position: 'absolute',
+      left: 16,
+      bottom: 88, // clears the control bar
+      width: 'min(300px, 70%)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 4,
+      pointerEvents: 'none',
+    }}
+  >
+    {feed.slice(-5).map((item, i, arr) => (
+      <div
+        key={item.uid}
+        style={{
+          alignSelf: 'flex-start',
+          maxWidth: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          background: 'rgba(8,8,9,0.55)',
+          backdropFilter: 'blur(4px)',
+          borderRadius: 14,
+          padding: '4px 10px',
+          fontSize: 12.5,
+          opacity: 0.45 + 0.55 * ((i + 1) / arr.length), // older rows fade
+          transition: 'opacity 300ms ease',
+          animation: 'vwFeedIn 260ms ease-out',
+        }}
+      >
+        <span
+          style={{
+            fontWeight: 600,
+            color: accent,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {item.name}
+        </span>
+        <span style={{ whiteSpace: 'nowrap' }}>sent {item.gift.label}</span>
+        <span style={{ fontSize: 16, lineHeight: 1 }}>{item.gift.icon}</span>
+        <span style={{ color: '#B8B3AC', fontVariantNumeric: 'tabular-nums' }}>+{item.amount}</span>
+      </div>
+    ))}
+  </div>
+)}
 
       {/* controls layer — this is what auto-hides */}
       <div

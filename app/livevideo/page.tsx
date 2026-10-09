@@ -9,12 +9,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPublicClient, encodeFunctionData, erc20Abi, formatUnits, Hex, http, parseUnits } from 'viem';
 import { monadTestnet } from 'viem/chains';
 import Hls from 'hls.js';
-import { useGiftBroadcast } from '@/hooks/useGiftBroadcast';
+
 import { useLiveStream } from '@/hooks/useLiveStream';
-import { LIVE_CREATOR_ADDRESS, LIVE_GIFTS_ABI, LIVE_GIFTS_ADDRESS } from '@/lib/live/config';
-import { stringToHex } from 'viem';
-const streamIdHex = stringToHex('metropolis-live', { size: 32 });
-const giftIdHex = (id: string) => stringToHex(id, { size: 32 });
+import { LIVE_CREATOR_ADDRESS } from '@/lib/live/config';
+
+
 
 
 type Step = 'select' | 'mpesa' | 'converting' | 'success' | 'error';
@@ -49,7 +48,7 @@ export default function LiveVideoWidgetDemo() {
   const { wallets } = useWallets();
   const wallet = wallets.find((w) => w.walletClientType === 'privy');
   const { sendTransaction } = useSendTransaction();
-  const { incomingGift, broadcastGift, goal, setStreamGoal } = useLiveStream('metropolis-demo');
+  const { incomingGift, broadcastGift, goal, setStreamGoal, feed } = useLiveStream('metropolis-demo');
 
   const fetchAusdBalance = useCallback(async (address: Hex) => {
     if (!AUSD_ADDRESS) {
@@ -130,22 +129,6 @@ useEffect(() => {
   }
 }, []);
 
-const setupStream = async () => {
-  const r = await sendTransaction(
-    {
-      to: LIVE_GIFTS_ADDRESS,
-      data: encodeFunctionData({
-        abi: LIVE_GIFTS_ABI,
-        functionName: 'createStream',
-        args: [streamIdHex],
-      }),
-    },
-    { address: wallet!.address, sponsor: true }
-  );
-  if (r?.hash) await publicClient.waitForTransactionReceipt({ hash: r.hash });
-};
-
-  
 
   return (
     <main
@@ -191,6 +174,7 @@ const setupStream = async () => {
           ]}
           goal={goal}
           onSetGoal={setStreamGoal}
+          feed={feed}
           
      
           gifts={DEFAULT_GIFTS}
@@ -287,7 +271,7 @@ const setupStream = async () => {
               const hash = result?.hash; 
               if (!hash) throw new Error('No transaction hash returned');
 
-              void broadcastGift(pkg, hash); 
+              void broadcastGift(pkg, hash,user?.email?.address?.split('@')[0]); 
               await fetchAusdBalance(wallet.address as Hex);
             } catch (err) {
               const msg = err instanceof Error ? err.message : `Failed to send "${pkg.label}".`;

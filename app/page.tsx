@@ -17,7 +17,7 @@ export default function Home() {
               <Zap/>
             </div>
           </div>
-          <span className="font-display font-bold text-xl tracking-tight text-[#ffffff]">StreamBurst</span>
+          <span className="font-display font-bold text-xl tracking-tight text-[#ffffff]">SonicStream</span>
         </Link>
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#8352ec] text-[#ffffff] font-semibold text-sm transition-all shadow-md shadow-[#8352ec]/20">
           <Wallet/>
