@@ -3,17 +3,19 @@ import { createPublicClient, http, parseEventLogs, erc20Abi, formatUnits, type H
 import { monadTestnet } from 'viem/chains';
 import { AUSD_ADDRESS } from '@/lib/monad-tokens';
 import { pusherServer } from '@/lib/pusher-server';
-import { liveGoals, liveSeenTx ,liveFeed} from '@/lib/live/goalStore';
 import { LIVE_CREATOR_ADDRESS } from '@/lib/live/config';
+import { getGoal, incrementGoal, appendFeed, markTxSeen } from '@/lib/live/goalStore';
 
 const client = createPublicClient({ chain: monadTestnet, transport: http() });
 
 export async function POST(req: Request) {
-  const { streamId, uid, gift, senderId, txHash,name } = await req.json();
+  const { streamId, uid, gift, senderId, txHash, name } = await req.json();
   if (!streamId || !uid || !gift || !txHash) {
     return NextResponse.json({ error: 'missing fields' }, { status: 400 });
   }
-  if (liveSeenTx.has(txHash)) {
+
+  const firstTime = await markTxSeen(txHash);
+  if (!firstTime) {
     return NextResponse.json({ error: 'already counted' }, { status: 409 });
   }
 
@@ -42,16 +44,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'amount mismatch' }, { status: 400 });
   }
 
-  liveSeenTx.add(txHash);
-
-  const from = match.args.from; 
+  const from = match.args.from;
   const shortAddr = `${from.slice(0, 6)}…${from.slice(-4)}`;
   const cleanName = typeof name === 'string' ? name.trim().slice(0, 24) : '';
 
   const entry = {
     uid,
     name: cleanName || shortAddr,
-     gift: {
+    gift: {
       id: String(gift.id).slice(0, 32),
       icon: String(gift.icon).slice(0, 8),
       label: String(gift.label).slice(0, 20),
@@ -60,22 +60,20 @@ export async function POST(req: Request) {
     amount: paid,
   };
 
-  const list = liveFeed.get(streamId) ?? [];
-  list.push(entry);
-  liveFeed.set(streamId, list.slice(-30));
-
+  await appendFeed(streamId, entry);
   await pusherServer.trigger(`live-${streamId}`, 'gift', { ...entry, senderId, txHash });
 
-  const goal = liveGoals.get(streamId);
+  const goal = await incrementGoal(streamId, paid);
   if (goal) {
-    goal.current += paid;
     await pusherServer.trigger(`live-${streamId}`, 'goal-update', goal);
   }
+
   return NextResponse.json({ ok: true });
 }
 
 export async function GET(req: Request) {
   const streamId = new URL(req.url).searchParams.get('streamId');
   if (!streamId) return NextResponse.json({ error: 'missing streamId' }, { status: 400 });
-  return NextResponse.json({ feed: liveFeed.get(streamId) ?? [] });
+  const { getFeed } = await import('@/lib/live/goalStore');
+  return NextResponse.json({ feed: await getFeed(streamId) });
 }

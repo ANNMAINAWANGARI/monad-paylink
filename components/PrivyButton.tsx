@@ -1,15 +1,21 @@
 'use client'
 
 import { Button } from './ui/button'
-import { usePrivy } from '@privy-io/react-auth';
+import { usePrivy,useLogin } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 
 const PrivyButton = () => {
     const router = useRouter();
-    const { ready, authenticated, user, logout } = usePrivy();
-    const handleLogin = ()=>{
-        router.push('/login')
-    }
+    const { ready, authenticated, user, logout, } = usePrivy();
+    const { login } = useLogin({
+        onComplete: ({ user, isNewUser }) => {
+            router.push('/settings'); 
+        },
+        onError: (error) => {
+            console.error('Login failed', error);
+        }
+    });
+    
     if(!ready){
         return(
             <Button>
@@ -19,7 +25,7 @@ const PrivyButton = () => {
     }
     if(!authenticated){
         return(
-            <Button onClick={handleLogin}>Login</Button>
+            <Button onClick={login}>Login</Button>
         )
     }
   return (
