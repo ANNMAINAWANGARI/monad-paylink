@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title MonadStream
- * @dev Designed for Monad Hackathon to demonstrate Parallel EVM capabilities.
+ * @dev Designed for Monad to demonstrate Parallel EVM capabilities.
  */
 
 contract MonadStream is ReentrancyGuard, Ownable{
